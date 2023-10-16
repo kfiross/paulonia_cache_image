@@ -25,8 +25,8 @@ class PCacheImageService {
   static final Codec<String, String> _stringToBase64 = utf8.fuse(base64);
 
   /// Used to save the paths to using it on the deletion
-  static final Set<String> _cachedPaths = Set<String>();
-  static Set<String> get cachedPaths => _cachedPaths;
+  static final Map<String, String> _cachedPaths = Map<String, String>();
+  static Map<String, String> get cachedPaths => _cachedPaths;
 
   /// Initialize the service on mobile
   ///
@@ -46,22 +46,23 @@ class PCacheImageService {
       Duration maxRetryDuration, bool enableCache,
       {bool clearCacheImage = false}) async {
     Uint8List bytes;
-    String id = _stringToBase64.encode(url);
+    String key = _stringToBase64.encode(url.split('?').first);    // remove token 
+    String value = DateTime.now().microsecondsSinceEpoch.toString(); // changing
 
-    String path = _tempPath + '/' + id;
+    String path = _tempPath + '/' + key;
     final File file = File(path);
 
     if (clearCacheImage) {
       file.deleteSync();
-      _cachedPaths.remove(path);
+      _cachedPaths.remove(key);
     }
-    if (fileIsCached(file)) {
+    if (fileIsCached(key)) {
       bytes = file.readAsBytesSync();
     } else {
       bytes = await downloadImage(url, retryDuration, maxRetryDuration);
       if (bytes.lengthInBytes != 0) {
         if (enableCache) {
-          saveFile(file, bytes);
+          saveFile(file, bytes, key);
         }
       } else {
         /// TODO The image can't be downloaded
@@ -73,7 +74,7 @@ class PCacheImageService {
 
   /// Clears all the images from the local storage
   static Future<void> clearAllImages() async {
-    for (String path in _cachedPaths) {
+    for (String path in _cachedPaths.values) {
       var file = File(path);
       if (file.existsSync()) {
         file.deleteSync();
@@ -83,7 +84,7 @@ class PCacheImageService {
   }
 
   /// Gets the number of cached images in the actual session
-  static int get length => _cachedPaths.length;
+  static int get length => _cachedPaths.keys.length;
 
   /// Downloads the image
   ///
@@ -124,7 +125,20 @@ class PCacheImageService {
 
   /// Verifies if [file] is stored on cache
   @visibleForTesting
-  static bool fileIsCached(File file) {
+  static bool fileIsCached(String key) {
+    if (!_cachedPaths.keys.contains(key)){
+      return false;
+    }
+
+    // by bytes value
+    // for (String path in _cachedPaths.values){
+    //   File file = File(path);
+    //   if (file.existsSync() && file.lengthSync() > 0) {
+    //     return true;
+    //   }
+
+      // simple
+    File file = File(_cachedPaths[key]!);
     if (file.existsSync() && file.lengthSync() > 0) {
       return true;
     }
@@ -133,10 +147,10 @@ class PCacheImageService {
 
   /// Saves the file in the local storage
   @visibleForTesting
-  static void saveFile(File file, Uint8List bytes) {
+  static void saveFile(File file, Uint8List bytes, String key) {
     file.create(recursive: true);
     file.writeAsBytes(bytes);
-    _cachedPaths.add(file.path);
+    _cachedPaths[key] = file.path;
   }
 
   /// Get the network from a [gsUrl]
