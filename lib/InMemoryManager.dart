@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'package:flutter/cupertino.dart';
 import 'package:paulonia_cache_image/paulonia_cache_image.dart';
 import 'package:paulonia_cache_image/paulonia_cache_image_mobile.dart'
-    if (dart.library.html) 'package:paulonia_cache_image/paulonia_cache_image_web.dart';
+if (dart.library.html) 'package:paulonia_cache_image/paulonia_cache_image_web.dart';
 
 import 'constants.dart';
 
@@ -11,7 +11,7 @@ class InMemoryManager {
   /// Stores the images in memory
   static HashMap<String, ImageStreamCompleter> _manager = HashMap();
   static HashMap<String, ImageStreamCompleterHandle> _managerHandles =
-      HashMap();
+  HashMap();
   static late List<String> _savedImages;
   static List<String> get savedImages => _savedImages;
   static late int _maxInMemoryImages;
@@ -30,13 +30,16 @@ class InMemoryManager {
   /// [getImage()] from the service of the platform.
   static ImageStreamCompleter getImage(PCacheImage key,
       {bool clearMemoryImg = false}) {
+    // remove token stuff
+    final String keyUrl = key.url.split('?').first;
+
     if (clearMemoryImg) {
-      _manager.remove(key.url);
-      _managerHandles[key.url]?.dispose();
-      _managerHandles.remove(key.url);
-      _savedImages.remove(key.url);
+      _manager.remove(keyUrl);
+      _managerHandles[keyUrl]?.dispose();
+      _managerHandles.remove(keyUrl);
+      _savedImages.remove(keyUrl);
     }
-    if (_manager.containsKey(key.url)) return _manager[key.url]!;
+    if (_manager.containsKey(keyUrl)) return _manager[keyUrl]!;
     ImageStreamCompleter res = MultiFrameImageStreamCompleter(
       codec: PCacheImageService.getImage(
         key.url,
@@ -53,9 +56,9 @@ class InMemoryManager {
       _managerHandles[removedUrl]?.dispose();
       _managerHandles.remove(removedUrl);
     }
-    _savedImages.add(key.url);
-    _manager[key.url] = res;
-    _managerHandles[key.url] = res.keepAlive();
+    _savedImages.add(keyUrl);
+    _manager[keyUrl] = res;
+    _managerHandles[keyUrl] = res.keepAlive();
     return res;
   }
 

@@ -25,8 +25,8 @@ class PCacheImageService {
   static final Codec<String, String> _stringToBase64 = utf8.fuse(base64);
 
   /// Used to save the paths to using it on the deletion
-  static final Map<String, String> _cachedPaths = Map<String, String>();
-  static Map<String, String> get cachedPaths => _cachedPaths;
+  static final Set<String> _cachedPaths = Set<String>();
+  static Set<String> get cachedPaths => _cachedPaths;
 
   /// Initialize the service on mobile
   ///
@@ -46,23 +46,29 @@ class PCacheImageService {
       Duration maxRetryDuration, bool enableCache,
       {bool clearCacheImage = false}) async {
     Uint8List bytes;
-    String key = _stringToBase64.encode(url.split('?').first);    // remove token 
-    String value = DateTime.now().microsecondsSinceEpoch.toString(); // changing
 
-    String path = _tempPath + '/' + key;
+    // remove token stuff
+    final String cleanUrl = url.split('?').first;
+
+    // save as image on device
+    final String ext = cleanUrl.split('.').last;
+
+    String id = _stringToBase64.encode(cleanUrl);
+
+    String path = _tempPath + '/' + id + '.' + ext;
     final File file = File(path);
 
     if (clearCacheImage) {
       file.deleteSync();
-      _cachedPaths.remove(key);
+      _cachedPaths.remove(path);
     }
-    if (fileIsCached(key)) {
+    if (fileIsCached(file)) {
       bytes = file.readAsBytesSync();
     } else {
       bytes = await downloadImage(url, retryDuration, maxRetryDuration);
       if (bytes.lengthInBytes != 0) {
         if (enableCache) {
-          saveFile(file, bytes, key);
+          saveFile(file, bytes);
         }
       } else {
         /// TODO The image can't be downloaded
@@ -74,7 +80,7 @@ class PCacheImageService {
 
   /// Clears all the images from the local storage
   static Future<void> clearAllImages() async {
-    for (String path in _cachedPaths.values) {
+    for (String path in _cachedPaths) {
       var file = File(path);
       if (file.existsSync()) {
         file.deleteSync();
@@ -84,7 +90,7 @@ class PCacheImageService {
   }
 
   /// Gets the number of cached images in the actual session
-  static int get length => _cachedPaths.keys.length;
+  static int get length => _cachedPaths.length;
 
   /// Downloads the image
   ///
@@ -96,16 +102,16 @@ class PCacheImageService {
   /// of bytes.
   @visibleForTesting
   static Future<Uint8List> downloadImage(
-    String url,
-    Duration retryDuration,
-    Duration maxRetryDuration,
-  ) async {
+      String url,
+      Duration retryDuration,
+      Duration maxRetryDuration,
+      ) async {
     int totalTime = 0;
     Uint8List bytes = Uint8List(0);
     Duration _retryDuration = Duration(microseconds: 1);
     if (Utils.isGsUrl(url)) url = await (_getStandardUrlFromGsUrl(url));
     while (
-        totalTime <= maxRetryDuration.inSeconds && bytes.lengthInBytes <= 0) {
+    totalTime <= maxRetryDuration.inSeconds && bytes.lengthInBytes <= 0) {
       await Future.delayed(_retryDuration).then((_) async {
         try {
           http.Response response = await http.get(Uri.parse(url));
@@ -125,20 +131,7 @@ class PCacheImageService {
 
   /// Verifies if [file] is stored on cache
   @visibleForTesting
-  static bool fileIsCached(String key) {
-    if (!_cachedPaths.keys.contains(key)){
-      return false;
-    }
-
-    // by bytes value
-    // for (String path in _cachedPaths.values){
-    //   File file = File(path);
-    //   if (file.existsSync() && file.lengthSync() > 0) {
-    //     return true;
-    //   }
-
-      // simple
-    File file = File(_cachedPaths[key]!);
+  static bool fileIsCached(File file) {
     if (file.existsSync() && file.lengthSync() > 0) {
       return true;
     }
@@ -147,10 +140,10 @@ class PCacheImageService {
 
   /// Saves the file in the local storage
   @visibleForTesting
-  static void saveFile(File file, Uint8List bytes, String key) {
+  static void saveFile(File file, Uint8List bytes) {
     file.create(recursive: true);
     file.writeAsBytes(bytes);
-    _cachedPaths[key] = file.path;
+    _cachedPaths.add(file.path);
   }
 
   /// Get the network from a [gsUrl]
