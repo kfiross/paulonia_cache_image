@@ -2,6 +2,7 @@ library paulonia_cache_image;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:hive/hive.dart';
 import 'package:paulonia_cache_image/InMemoryManager.dart';
 import 'package:paulonia_cache_image/constants.dart';
@@ -83,10 +84,8 @@ class PCacheImage extends ImageProvider<PCacheImage> {
     return SynchronousFuture<PCacheImage>(this);
   }
 
-  // TODO(chrischv): Replace [DecoderCallback] with [ImageDecoderCallback]
   @override
-  // ignore: deprecated_member_use
-  ImageStreamCompleter load(PCacheImage key, DecoderCallback decode) {
+  ImageStreamCompleter loadImage(PCacheImage key, ImageDecoderCallback decode) {
     _initializeValues();
     if (enableCache! && enableInMemory!)
       return InMemoryManager.getImage(key, clearMemoryImg: clearCacheImage);

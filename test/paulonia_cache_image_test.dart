@@ -27,11 +27,18 @@ void main() {
   setUp(() async {
     PathProviderPlatform.instance = FakePathProviderPlatform();
   });
+  // error: The argument type 'Future<Codec> Function(Uint8List, {bool? allowUpscaling, int? cacheHeight, int? cacheWidth})' can't be assigned to the parameter type 'Future<Codec> Function(ImmutableBuffer, {TargetImageSize Function(int, int)? getTargetSize})'.  (argument_type_not_assignable at [paulonia_cache_image] test/paulonia_cache_image_test.dart:104)
+  // Future<ui.Codec> _basicDecoder(Uint8List bytes,
+  //     {int? cacheWidth, int? cacheHeight, bool? allowUpscaling}) {
+  //   return ui.instantiateImageCodec(bytes,
+  //       allowUpscaling: allowUpscaling ?? false);
+  // }
 
-  Future<ui.Codec> _basicDecoder(Uint8List bytes,
-      {int? cacheWidth, int? cacheHeight, bool? allowUpscaling}) {
-    return ui.instantiateImageCodec(bytes,
-        allowUpscaling: allowUpscaling ?? false);
+  Future<ui.Codec> _basicDecoder(
+    ui.ImmutableBuffer buffer, {
+    ui.TargetImageSizeCallback? getTargetSize}){
+    return ui.instantiateImageCodecFromBuffer(buffer,
+              allowUpscaling: false);
   }
 
   group('Initialize package', () {
@@ -101,7 +108,7 @@ void main() {
           {bool enableCache = true, bool enableInMemory = false}) {
         PCacheImage image = PCacheImage(url,
             enableCache: enableCache, enableInMemory: enableInMemory);
-        var completer = image.load(image, _basicDecoder);
+        var completer = image.loadImage(image, _basicDecoder);
         completer.addListener(ImageStreamListener(
           (ImageInfo image, bool synchronousCall) {},
           onError: (dynamic error, StackTrace? stackTrace) {
